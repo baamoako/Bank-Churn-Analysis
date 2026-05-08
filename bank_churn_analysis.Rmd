@@ -1,0 +1,455 @@
+---
+title: "Bank Customer Churn Analysis"
+author: "Bismark Addo Amoako"
+date: "2025-04-03"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: flatly
+---
+```{r}
+knitr::opts_chunk$set(fig.width = 6, fig.height = 4, fig.align = "center")
+```
+
+## Introduction
+This report analyzes the BankChurners.csv dataset to understand customer churn behavior at a bank. The dataset contains 10,127 customer records with variables related to demographics, financial behavior, and churn status. Statistical methods including proportion tests, t-tests, chi-square tests, ANOVA, and regression are used to identify factors associated with churn, supported by visualizations.The goal is to provide actionable insights for the bank to reduce customer churn.
+
+### 1. DATASET OVERVIEW
+
+#### Load dataset
+
+```{r}
+# Load dataset
+churn <- read.csv("data/BankChurners.csv")
+
+# Dropping irrelevant columns
+churn <- churn[, !names(churn) %in% c("Naive_Bayes_Classifier_Attrition_Flag_Card_Category_Contacts_Count_12_mon_Dependent_count_Education_Level_Months_Inactive_12_mon_1",
+"Naive_Bayes_Classifier_Attrition_Flag_Card_Category_Contacts_Count_12_mon_Dependent_count_Education_Level_Months_Inactive_12_mon_2", "CLIENTNUM")] 
+
+```
+#### Data Exploration
+
+#### Number of observations
+
+- **Findings**: Dataset has 10,127 rows and 20 columns.
+```{r rows and columns}
+dim(churn)
+```
+#### Count Null Values
+
+- **Findings**: Dataset has no null values but contains an 'Unknown' category in Income_Category, which may represent missing or undisclosed income information.
+```{r}
+unique(churn$Income_Category) #
+sum(is.na(churn))
+```
+
+#### Variable types and Structure
+- **Findings**: Dataset has 13 numerical Variables and 7 Categorical variables.
+```{r}
+str(churn)
+```
+| **Variable**                      | **Type**        |  |
+|-----------------------------------|----------------|  -----------------------|
+| Attrition Flag                    | Categorical binary    |  
+| Customer Age                      | Numerical      |  
+| Gender                            | Categorical binary    |  
+| Dependent Count                   | Numerical      |  
+| Education Level                   | Categorical    |  
+| Marital Status                    | Categorical    |  
+| Income Category                   | Categorical    |  
+| Card Category                     | Categorical    |  
+| Months on Book                    | Numerical      |  
+| Total Relationship Count          | Numerical      |  
+| Months Inactive                   | Numerical      |  
+| Contacts Count                    | Numerical      |  
+| Credit Limit                      | Numerical      |  
+| Total Revolving Balance           | Numerical      |  
+| Avg Open To Buy                   | Numerical      |  
+| Total Amount Change               | Numerical      |  
+| Total Transaction Amount          | Numerical      |  
+| Total Transaction Count           | Numerical      |  
+| Total Count Change                | Numerical      |  
+| Avg. Utilization Ratio            | Numerical      |  
+
+
+#### Summary statistics
+```{r}
+summary(churn)
+```
+
+#### Display the top five rows
+```{r}
+head(churn)
+```
+
+#### Key Variables for analysis
+
+The key variables for analysis includes:
+
+  - Attrition_Flag, Gender, Customer Age, Avg_Utilization_Ratio, Income_Category, and  Credit_Limit.These variables were chosen because they capture customer demographics, financial behavior, and churn status, which are critical for understanding churn.
+  
+
+### 2. ONE-SAMPLE AND TWO-SAMPLE PROPORTION TESTS
+
+(i) ONE-SAMPLE PROPORTION TEST
+
+- **A one-sample proportion test will be used to determine if the proportion of customer attrition is less than the industry standard of 20%.**
+
+The binary variable selected is Attrition_Flag (values: 'Attrited Customer', 'Existing Customer').
+```{r}
+unique(churn$Attrition_Flag) # Confirm binary categorical variable
+```
+
+- **Hypothesis test**
+
+    Null hypothesis: proportion of attrition equals 20%
+
+    **$H_0 p = 0.2$**
+    
+    Alternate Hypothesis: proportion of attrition is less than 20%
+    
+    **$H_a p < 0.2$**
+    
+```{r}
+total_customers <- nrow(churn) # Sample size: 10127
+attrited <- sum(churn$Attrition_Flag == "Attrited Customer") # Number of attrited customers
+anull <- 0.2 # Hypothesized proportion
+print(total_customers)
+print(attrited)
+print(anull)
+```
+
+- **one tailed proportion test**
+```{r}
+prop.test(attrited,total_customers,p=anull, alternative = "less", correct = TRUE)
+```
+**Decision**: Reject the null hypothesis that the proportion of attrited customers equals 0.2.
+
+**Reason**: The p-value (2.2e-16) is much less than the significance level of 0.05, and the 95% confidence interval (0.000, 0.167) does not include 0.2. Additionally, the sample proportion (0.1606596) is below the hypothesized value of 0.2.
+
+**Conclusion**: Based on the test, there is strong evidence to conclude that the bank’s attrition rate is below the industry standard of 20%.
+
+
+(ii) **A two-sample proportion test will be conducted to compare attrition proportions between male and female customers.**
+
+- **Hypothesis test** 
+
+    Null hypothesis: The proportion of attrited customers is the same for males and females
+
+    **$H_o: p_{\text{females}} = p_{\text{male}}$**
+    
+    Alternate Hypothesis: The proportion of attrited customers differs between males and females
+    
+    **$H_a: p_{\text{females}} \neq p_{\text{males}}$**
+    
+**contingency table for gender and customer status**
+```{r}
+gender_status <-table(gender=churn$Gender,status=churn$Attrition_Flag) # contingency table creation
+print(gender_status)
+```
+**Perform two-proportion**
+```{r}
+prop.test(
+  x = c(gender_status["F", "Attrited Customer"], 
+        gender_status["M", "Attrited Customer"]),
+  n = c(sum(gender_status["F", ]), 
+        sum(gender_status["M", ])),
+  alternative = "two.sided",
+  correct = TRUE
+)
+```
+**Decision**: Reject the null hypothesis because the p-value (0.0001964) is well below 0.05
+
+**Reason**:The p-value(0.0001964) is less than the significance level of 0.05, and the confidence interval excludes 0 confirms a significant difference, with females having a higher proportion
+
+**Conclusion**: At the 5% significance level, there is a significant difference in the proportion of attrition between females and males, with females showing a higher attrition rate. The observed difference in sample proportions is likely due to a true difference in the population.
+
+- **Assumptions**: For the one-sample test, \( np_0 = 10127 \times 0.2 = 2025.4 \geq 5 \), \( n(1-p_0) = 8101.6 \geq 5 \), satisfying the sample size requirement. For the two-sample test, sample sizes for both groups (F: 5356, M: 4771) and successes (F: 930, M: 697) meet the requirement (\( np \geq 5 \), \( n(1-p) \geq 5 \)).
+
+```{r}
+#Bar Chart
+barplot(table(churn$Attrition_Flag, churn$Gender), beside = TRUE, main = "Attrition by Gender", xlab = "Gender", ylab = "Count", col = c("lightblue", "lightgreen"), legend = levels(churn$Attrition_Flag))
+```
+
+### 3. DESCRIPTIVE STATISTICS & DATA VISUALIZATION
+
+
+```{r}
+#summary statistics for customer age by attrition
+summary_stats <- aggregate(Customer_Age ~ Attrition_Flag, data = churn, 
+                          FUN = function(x) c(mean = mean(x), 
+                                             median = median(x), 
+                                             sd = sd(x), 
+                                             min = min(x), 
+                                             max = max(x)))
+print(summary_stats)
+```
+**Conclusion**: The mean and median ages of Attrited Customers (47.5, 48.0) are slightly higher than those of Existing Customers (46.2, 46.0), suggesting a tendency for older customers to churn.
+
+
+```{r}
+# Boxplot
+boxplot(Customer_Age ~ Attrition_Flag, data = churn, main = "Boxplot of Customer Age by Attrition Status", 
+        xlab = "Attrition Status",
+        ylab = "Customer Age", 
+        col = c("lightblue", "lightgreen")
+        )
+
+```
+
+**Conclusion**: The boxplot reveals a few outliers in both groups, with ages below 30 and above 65 appearing as points beyond the whiskers. These suggest some unusually young or old customers in the dataset, though not extreme enough to skew the overall distribution.
+```{r}
+hist(churn$Customer_Age, main = "Histogram of Customer Age",
+     xlab = "Customer Age", 
+     col = "lightblue", 
+     breaks = 20)
+```
+
+**Conclusion**:The histogram of Customer Age shows a roughly symmetric distribution with a peak around 45–50 years, indicating most customers are middle-aged.
+```{r}
+# Bar chart
+barplot(table(churn$Attrition_Flag), main = "Bar Chart of Attrition Status", xlab = "Attrition Status", 
+        ylab = "Count", col = c("lightblue", "lightgreen"))
+```
+
+## 4. COMPARING TWO GROUP MEANS
+
+#### Comparison Selection
+- **A comparison is selected to test whether the mean average utilization ratio differs between attrited and existing customers.**
+  - Numerical Variable: Avg_Utilization_Ratio
+  - Categorical Variable: Attrition_Flag 
+  - Groups: Attrited Customers vs. Existing Customers.
+Null Hypothesis: The mean Avg_Utilization_Ratio is the same for attrited and existing customers
+
+- **Hypothesis test** 
+
+$H_0: \mu_{\text{Attrited}} = \mu_{\text{Existing}}$
+  
+Alternative Hypothesis: The mean Avg_Utilization_Ratio differs between attrited and existing customers
+
+$H_a: \mu_{\text{Attrited}} \neq \mu_{\text{Existing}}$
+
+####  Perform two-sample t-test
+```{r}
+t.test(Avg_Utilization_Ratio ~ Attrition_Flag, data = churn, 
+       var.equal = FALSE)
+```
+**Mean Average Utilisation**
+
+  - Attrited Customers = 0.1624
+  - Existing Customers = 0.2964
+    
+**Confidence Interval**
+-   95% Confidence Interval:-0.1480402 -0.1198331(Does not include 0)
+
+**p-value**
+-   p-value=  2.2e-16(p-value < 0.05)
+
+- **Decision**: Reject the null hypothesis that the mean Avg_Utilization_Ratio is the same for attrited and existing customers.
+
+- **Reason**: The p-value (< 2.2e-16) is much less than the significance level of 0.05, and the 95% confidence interval (-0.148, -0.120) does not include 0, confirming a significant difference.
+
+Conclusion: At the 5% significance level, there is strong evidence that the mean average utilization ratio differs between attrited and existing customers, with attrited customers showing a lower mean utilization ratio. This suggests that lower credit utilization may be associated with customer churn .
+
+- **Assumptions**: Normality is assumed to hold due to the large sample size (10,127), per the Central Limit Theorem.
+
+### 5. CATEGORICAL DATA ANALYSIS
+
+#### Variable Selection
+- **Two categorical variables are selected to examine the relationship between customer attrition and income level.**
+  - Variable 1: Attrition_Flag
+  - Variable 2: Income_Category
+  
+- **Hypothesis test** 
+
+Null Hypothesis: There is no relationship between Attrition_Flag and Income_Category.
+
+$H_0$: Attrition_Flag and Income_Category are independent
+
+Alternative Hypothesis: There is a relationship between Attrition_Flag and Income_Category.
+
+$H_a$: Attrition_Flag and Income_Category are not independent
+
+**Rationale**: Income level may influence a customer’s likelihood to churn. For instance, lower-income customers might be more sensitive to fees, while higher-income customers might seek better services elsewhere.
+
+#### Contingency Table
+```{r}
+# Create contingency table
+aFlag_iCategory <- table(churn$Attrition_Flag, churn$Income_Category)
+print(aFlag_iCategory)
+```
+####  Perform chi-square test
+```{r}
+chi_test <- chisq.test(aFlag_iCategory)
+print(chi_test)# print results
+```
+- **Results**  
+  **Decision**: Reject the null hypothesis that Attrition_Flag and Income_Category are independent.  
+  **Reason**: The p-value (0.025) is less than the significance level of 0.05, indicating a significant relationship.
+  **Conclusion**: At the 5% significance level, there is evidence of a relationship between customer attrition and income category.  
+
+- **Implications**:  
+  This relationship implies that income level may influence a customer’s likelihood of churning. For instance, certain income categories among attrited customers, such as lower-income groups facing financial constraints or higher-income groups seeking better services elsewhere.
+  
+- **Assumptions Check**:  
+  The expected counts(12) are all above 5 , satisfying the chi-square test assumption.
+
+#### Visualization  
+
+# Ordered Levels for Income Category
+```{r}
+churn$Income_Category <- factor(churn$Income_Category, 
+                                levels = c("Unknown", "Less than $40K", "$40K - $60K", 
+                                           "$60K - $80K", "$80K - $120K", "$120K +"),
+                                ordered = TRUE)
+```
+
+```{r}
+barplot(table(churn$Attrition_Flag, churn$Income_Category),
+        beside = TRUE, main = "Attrition by Income Category", 
+        xlab = "Income Category", 
+        ylab = "Count", col = c("lightblue", "lightgreen"), 
+        legend = levels(churn$Attrition_Flag))
+```
+  
+### 6. COMPARING MORE THAN TWO GROUPS
+
+#### Variable Selection
+- **A numerical variable and a categorical variable with multiple levels are selected to compare means across groups.**
+  - Numerical Variable: Avg_Utilization_Ratio.
+  - Categorical Variable: Income_Category.
+
+#### Summary Statistics
+```{r}
+# Summary statistics by Income_Category
+aur_incomec <- aggregate(Avg_Utilization_Ratio ~ Income_Category, data = churn, 
+                          FUN = function(x) c(mean = mean(x), sd = sd(x), n = length(x)))
+print(aur_incomec)
+```
+
+# Boxplot to visualize Avg_Utilization_Ratio across Income_Category
+```{r}
+boxplot(Avg_Utilization_Ratio ~ Income_Category, data = churn,
+        main = "Boxplot of Avg Utilization Ratio by Income Category",
+        xlab = "Income Category", ylab = "Avg Utilization Ratio",
+        col = rainbow(6), las = 2)
+```
+
+- **Hypothesis test**
+
+Null Hypothesis: The mean Avg_Utilization_Ratio is the same across all income categories.
+
+$H_0: \mu_{\text{Less than 40K}} = \mu_{\text{40K-60K}} = \mu_{\text{60K-80K}} = \mu_{\text{80K-120K}} = \mu_{\text{120K+}} = \mu_{\text{Unknown}}$
+
+Alternative Hypothesis: At least one income category has a different mean Avg_Utilization_Ratio.
+
+$H_a$: Not all means are equal
+
+**Rationale:** Income level may influence credit utilization. Lower-income customers might have higher utilization due to financial constraints, while higher-income customers might have lower utilization due to greater financial flexibility.
+
+#### Perform One-Way ANOVA
+```{r}
+anova_result <- aov(Avg_Utilization_Ratio ~ Income_Category, data = churn)
+print(summary(anova_result))
+```
+- **Results**:
+
+**Decision**: Reject the null hypothesis that the mean Avg_Utilization_Ratio is the same across all income categories.
+
+**Reason**: The p-value (< 2e-16) is much less than the significance level of 0.05, indicating a significant difference in means. The F-statistic (255.6) with 5 and 10121 degrees of freedom supports this conclusion.
+
+**Conclusion**: At the 5% significance level, there is strong evidence that the mean average utilization ratio differs across income categories.
+
+- **Assumptions**: Normality is assumed to hold due to the large sample size (10,127), per the Central Limit Theorem.
+
+#### Tukey HSD test to identify which groups differ
+```{r}
+  tukey_result <- TukeyHSD(anova_result)
+  print(tukey_result)
+
+```
+
+#### Tukey HSD plot
+```{r}
+plot(tukey_result) # basic Tukey HSD plot
+```
+
+
+- **Implications**:
+The results indicate that income level significantly affects credit utilization. Lower-income customers exhibit higher utilization ratios, likely due to financial constraints, which may strain their finances and potentially contribute to churn . Higher-income customers have lower utilization, reflecting greater financial flexibility.
+
+### 7. REGRESSION ANALYSIS
+
+#### Variable Selection
+- **A simple linear regression model is fitted to predict Avg_Utilization_Ratio using Credit_Limit as the predictor.**
+  - Response Variable: Avg_Utilization_Ratio .
+  - Predictor Variable: Credit_Limit .
+
+#### Scatterplot 
+```{r}
+# Scatterplot of Avg_Utilization_Ratio vs. Credit_Limit
+plot(churn$Credit_Limit, churn$Avg_Utilization_Ratio,
+     main = "Scatterplot of Avg Utilization Ratio vs. Credit Limit",
+     xlab = "Credit Limit", ylab = "Avg Utilization Ratio",
+     pch = 20, col = "purple")
+abline(lm(Avg_Utilization_Ratio ~ Credit_Limit, data = churn), col = "red", lwd=3)
+```
+
+#### Fit the Linear Regression Model
+
+```{r}
+# Fit the model
+lm_model <- lm(Avg_Utilization_Ratio ~ Credit_Limit, data = churn)
+summary(lm_model)
+```
+###  Interpretation
+   - **Decision**: Confirms a significant relationship based on the p-values.
+   
+   - **Reason**: Uses the actual slope (-0.00001465) and intercept (0.4014), noting their significance (p < 2e-16). The slope indicates a negative relationship: as credit limit increases, utilization decreases.
+   
+   - **Reason**: For a $10,000 increase in credit limit, the utilization ratio decreases by 0.00001465 × 10,000 = 0.1465 units (14.65 percentage points).
+   
+   - **Conclusion**: Affirms Credit_Limit as a significant predictor at the 5% level.
+
+  - **Model Fit**:
+   - R-squared (0.2333) shows that 23.33% of the variance is explained, which is moderate for a simple linear model. This suggests Credit_Limit is relevant but not the only factor affecting utilization.
+   - The F-statistic (3080, p < 2e-16) confirms the model’s overall significance.
+   
+ - **Linearity Assumption**:
+    - The relationship between Credit_Limit and utilization does not follow a simple linear pattern and may be influenced by other variables.
+    
+#### Independence of Errors
+```{r}
+   plot(lm_model$fitted.values, residuals(lm_model),
+     main = "Residuals vs. Fitted Values",
+     xlab = "Fitted Values",
+     ylab = "Residuals",pch = 20, col = "purple") 
+abline(h = 0, col = "red", lwd = 3)
+```
+
+- **Decision**: There were no patterns between the residuals, which supports the assumption that the errors are independent.
+
+#### Normality of Residuals
+```{r}
+hist (residuals (lm_model), main = "Histogram of Residuals",
+xlab = "Residuals",
+col = "yellow",
+breaks = 20)
+```
+
+The residuals are not symmetrically distributed around zero, and the histogram of the residuals lacks symmetry, indicating that the residuals do not follow a normal distribution.
+
+#### Test for contant variance
+
+```{r}
+library (lmtest) #Loading required package
+bptest (lm_model)
+```
+**decision**:Decision: Since the p-value is less than the alpha level of 0.05, residuals do not have a constant variance. Hence, there is heteroskedasticity.
+
+**Conclusion**: Given that the assumptions were not met, a simple linear model may not be the best fit for the data and a more complex model might be needed.
+
+
+## Conclusion 
+   The analysis reveals key insights into customer churn: the bank’s attrition rate (16.07%) is below the industry standard (20%), females have a higher attrition rate than males, attrited customers have lower credit utilization, income level affects both churn and utilization, and credit limit negatively predicts utilization. The bank should target lower-income and female customers with retention strategies, such as financial education or tailored products, to reduce churn.
